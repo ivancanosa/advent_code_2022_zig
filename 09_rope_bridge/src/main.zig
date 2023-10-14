@@ -12,40 +12,59 @@ const Vec2 = struct {
     }
 };
 
-const Rope = struct {
-    const Self = @This();
+pub fn Rope(comptime knots: u32) type {
+    return struct {
+        const Self = @This();
 
-    head: Vec2 = Vec2{},
-    tail: Vec2 = Vec2{},
+        knots: [knots]Vec2 = undefined,
 
-    fn move_head(self: *Self, delta_head: Vec2) !void {
-        self.head.x += delta_head.x;
-        self.head.y += delta_head.y;
-
-        const dx = self.head.x - self.tail.x;
-        const dy = self.head.y - self.tail.y;
-        const abs_dx = try std.math.absInt(dx);
-        const abs_dy = try std.math.absInt(dy);
-
-        if (abs_dx >= 2 and abs_dy == 0) {
-            self.tail.x += @divExact(dx, 2);
-        } else if (abs_dy >= 2 and abs_dx == 0) {
-            self.tail.y += @divExact(dy, 2);
-        } else if (abs_dy >= 2 or abs_dx >= 2) {
-            if (abs_dy >= 2) {
-                self.tail.y += @divExact(dy, 2);
-            } else {
-                self.tail.y += dy;
+        fn init() Self {
+            var result = Self{};
+            for (0..result.knots.len) |i| {
+                result.knots[i] = Vec2{};
             }
 
-            if (abs_dx >= 2) {
-                self.tail.x += @divExact(dx, 2);
-            } else {
-                self.tail.x += dx;
+            return result;
+        }
+
+        fn getTail(self: *const Self) Vec2 {
+            return self.knots[self.knots.len - 1];
+        }
+
+        fn move_head(self: *Self, delta_head: Vec2) !void {
+            self.knots[0].x += delta_head.x;
+            self.knots[0].y += delta_head.y;
+
+            for (0..self.knots.len - 1) |i| {
+                var head = &self.knots[i];
+                var tail = &self.knots[i + 1];
+
+                const dx = head.x - tail.x;
+                const dy = head.y - tail.y;
+                const abs_dx = try std.math.absInt(dx);
+                const abs_dy = try std.math.absInt(dy);
+
+                if (abs_dx >= 2 and abs_dy == 0) {
+                    tail.x += @divExact(dx, 2);
+                } else if (abs_dy >= 2 and abs_dx == 0) {
+                    tail.y += @divExact(dy, 2);
+                } else if (abs_dy >= 2 or abs_dx >= 2) {
+                    if (abs_dy >= 2) {
+                        tail.y += @divExact(dy, 2);
+                    } else {
+                        tail.y += dy;
+                    }
+
+                    if (abs_dx >= 2) {
+                        tail.x += @divExact(dx, 2);
+                    } else {
+                        tail.x += dx;
+                    }
+                }
             }
         }
-    }
-};
+    };
+}
 
 pub fn parseCommands(ally: std.mem.Allocator, lines: ArrayList([]u8)) !ArrayList(Vec2) {
     var commands = ArrayList(Vec2).init(ally);
@@ -75,11 +94,11 @@ pub fn traceTail(ally: std.mem.Allocator, commands: ArrayList(Vec2)) !u32 {
     var visited = std.AutoArrayHashMap(i64, void).init(ally);
     defer visited.deinit();
 
-    var rope = Rope{};
-    try visited.put(rope.tail.hash(), {});
+    var rope = Rope(2).init();
+    try visited.put(rope.getTail().hash(), {});
     for (commands.items) |command| {
         try rope.move_head(command);
-        try visited.put(rope.tail.hash(), {});
+        try visited.put(rope.getTail().hash(), {});
     }
 
     return @intCast(visited.count());
