@@ -90,11 +90,11 @@ pub fn parseCommands(ally: std.mem.Allocator, lines: ArrayList([]u8)) !ArrayList
     return commands;
 }
 
-pub fn traceTail(ally: std.mem.Allocator, commands: ArrayList(Vec2)) !u32 {
+pub fn traceTail(ally: std.mem.Allocator, commands: ArrayList(Vec2), comptime knots: u32) !u32 {
     var visited = std.AutoArrayHashMap(i64, void).init(ally);
     defer visited.deinit();
 
-    var rope = Rope(2).init();
+    var rope = Rope(knots).init();
     try visited.put(rope.getTail().hash(), {});
     for (commands.items) |command| {
         try rope.move_head(command);
@@ -119,8 +119,11 @@ pub fn main() !void {
     const commands = try parseCommands(allocator, lines);
     defer commands.deinit();
 
-    const result0 = try traceTail(allocator, commands);
+    const result0 = try traceTail(allocator, commands, 2);
     std.debug.print("Result 0: {}\n", .{result0});
+
+    const result1 = try traceTail(allocator, commands, 10);
+    std.debug.print("Result 1: {}\n", .{result1});
 }
 
 // Auxiliary functions
